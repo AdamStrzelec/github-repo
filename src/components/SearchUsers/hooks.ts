@@ -84,7 +84,7 @@ export const useSearchUsers = () => {
   return {
     onChangeInput,
     value: field.value,
-    errors,
+    validationErrors: errors,
     data,
     isLoading,
     error,

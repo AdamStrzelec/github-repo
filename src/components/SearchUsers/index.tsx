@@ -1,29 +1,15 @@
-import React, { useRef } from "react";
+import React from "react";
 import TextField from "@mui/material/TextField";
-import { useForm, SubmitHandler, useController } from "react-hook-form";
-import * as Yup from "yup";
-import { yupResolver } from "@hookform/resolvers/yup";
-import { useQuery } from "react-query";
-import { UsersResult } from "./types";
 import { useSearchUsers } from "./hooks";
-
-interface IFormInput {
-  userName: string;
-}
-
-const schema = Yup.object().shape({
-  userName: Yup.string()
-    .required("User name is required")
-    .min(3, "Min. 3 characters required")
-    .max(30, "You can input max 30 characters"),
-});
+import { UserCard } from "../UserCard";
+import styled from "@emotion/styled";
 
 export const SearchUsers = () => {
-  const { value, onChangeInput, errors, data } = useSearchUsers();
-  console.log(data);
+  const { value, onChangeInput, validationErrors, data, error, isLoading } =
+    useSearchUsers();
 
   return (
-    <div>
+    <CenteredWrapper>
       <TextField
         label="Input user name"
         variant="outlined"
@@ -32,9 +18,36 @@ export const SearchUsers = () => {
         onChange={onChangeInput}
         name={"userName"}
         value={value}
-        error={!!errors.userName}
-        helperText={errors.userName?.message}
+        error={!!validationErrors.userName}
+        helperText={validationErrors.userName?.message}
       />
-    </div>
+      {error ? (
+        <h2>Something went wrong</h2>
+      ) : isLoading ? (
+        <h2>Loading</h2>
+      ) : data?.items?.length ? (
+        data.items.map((item) => {
+          const { avatar_url, html_url, login, type, id } = item;
+
+          return (
+            <UserCard
+              key={id}
+              avatar_url={avatar_url}
+              html_url={html_url}
+              login={login}
+              type={type}
+            />
+          );
+        })
+      ) : (
+        <h2>No data to display</h2>
+      )}
+    </CenteredWrapper>
   );
 };
+
+const CenteredWrapper = styled("div")({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+});

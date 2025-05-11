@@ -1,4 +1,3 @@
-import "./App.css";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { SearchUsers } from "./components/SearchUsers";
 
