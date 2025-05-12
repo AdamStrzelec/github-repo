@@ -12,7 +12,6 @@ interface IFormInput {
 const schema = Yup.object().shape({
   userName: Yup.string()
     .required("User name is required")
-    .min(3, "Min. 3 characters required")
     .max(30, "You can input max 30 characters"),
 });
 
@@ -22,6 +21,7 @@ export const useSearchUsers = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [items, setItems] = useState<UsersResult['items']>([]);
   const [totalItemsLength, setTotalItemsLength] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
 
   const {
     control,
@@ -52,6 +52,8 @@ export const useSearchUsers = () => {
           return data;
         } catch (error) {
           console.error(error);
+        } finally {
+          setIsSearching(false);
         }
       },
       onSuccess: () => {
@@ -78,6 +80,11 @@ export const useSearchUsers = () => {
   ) => {
     field.onChange(event);
 
+    setIsSearching(!!event.target.value.length)
+    if(!event.target.value.length){
+      setItems([]);
+    }
+
     if (timeoutIdRef.current) {
       clearTimeout(timeoutIdRef.current);
     }
@@ -99,7 +106,7 @@ export const useSearchUsers = () => {
     validationErrors: errors,
     items,
     totalItemsLength,
-    isLoading,
+    isLoading: isLoading || isSearching,
     error,
     goToNextPage,
   }
