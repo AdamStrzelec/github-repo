@@ -1,9 +1,9 @@
 import { useForm, SubmitHandler, useController } from "react-hook-form";
 import * as Yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { useQuery } from "react-query";
+import { useMutation } from "react-query";
 import { UsersResult } from "./types";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 interface IFormInput {
   userName: string;
@@ -19,10 +19,13 @@ const schema = Yup.object().shape({
 const TIME_INTERVAL = 2000;
 
 export const useSearchUsers = () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [items, setItems] = useState<UsersResult['items']>([]);
+  const [totalItemsLength, setTotalItemsLength] = useState(0);
+
   const {
     control,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -31,29 +34,31 @@ export const useSearchUsers = () => {
     resolver: yupResolver(schema),
   });
 
-  const userName = watch("userName");
+  const {error, mutate, isLoading} = useMutation(
+    {
+      mutationFn: async ({ userName, currentPage }: {
+        userName: string;
+        currentPage: number;
+      }) => {
+        try {
+          const res = await fetch(
+            `https://api.github.com/search/users?q=${userName}&page=${currentPage}`
+          );
+          const data: UsersResult = await res.json();
 
-  const fetchUsers = async (
-    userName: string
-  ): Promise<Partial<UsersResult>> => {
-    try {
-      const data = await fetch(
-        `https://api.github.com/search/users?q=${userName}`
-      ).then((res) => res.json());
-
-      return data;
-    } catch (error) {
-      console.error(error);
-
-      return {};
+          setItems(prevItems => currentPage > 1 ? [...prevItems, ...data.items] : data.items)
+          setTotalItemsLength(data.total_count);
+    
+          return data;
+        } catch (error) {
+          console.error(error);
+        }
+      },
+      onSuccess: () => {
+        setCurrentPage(currentPage => currentPage + 1);
+      }
     }
-  };
-
-  const { data, refetch, isLoading, error } = useQuery({
-    queryKey: ["githubUsers"],
-    queryFn: () => fetchUsers(userName),
-    enabled: false,
-  });
+  );
 
   const { field } = useController({
     control,
@@ -61,8 +66,9 @@ export const useSearchUsers = () => {
     name: "userName",
   });
 
-  const onSubmit: SubmitHandler<IFormInput> = () => {
-    refetch();
+  const onSubmit: SubmitHandler<IFormInput> = ({userName}) => {
+    mutate({ userName, currentPage: 1 })
+    setCurrentPage(1);
   };
 
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -81,12 +87,20 @@ export const useSearchUsers = () => {
     }, TIME_INTERVAL);
   };
 
+  const goToNextPage = () => {
+    handleSubmit(({userName}) => {
+      mutate({ userName, currentPage })
+    })()
+  }
+
   return {
     onChangeInput,
     value: field.value,
     validationErrors: errors,
-    data,
+    items,
+    totalItemsLength,
     isLoading,
     error,
+    goToNextPage,
   }
 }
